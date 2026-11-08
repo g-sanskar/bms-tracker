@@ -114,7 +114,7 @@ export async function sendTwilioMessage({ body, env = process.env, fetchImpl = f
     !messagingServiceSid && !from && "TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM_NUMBER",
   ].filter(Boolean);
   if (missing.length) throw new Error(`Missing SMS secrets: ${missing.join(", ")}`);
-  const form = new URLSearchParams({ To:to, Body:body });
+  const form = new URLSearchParams({ To:to, Body:env.TWILIO_TRIAL_TEMPLATE || body });
   if (messagingServiceSid) form.set("MessagingServiceSid", messagingServiceSid);
   else form.set("From", from);
   const response = await fetchImpl(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`, {

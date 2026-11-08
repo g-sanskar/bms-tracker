@@ -49,6 +49,7 @@ In the GitHub repository, open **Settings → Secrets and variables → Actions*
 | `SMS_TO_NUMBER` | Yes | Destination in E.164 format, such as `+919876543210` |
 | `TWILIO_MESSAGING_SERVICE_SID` | Recommended | Messaging Service SID beginning with `MG` |
 | `TWILIO_FROM_NUMBER` | Alternative | Twilio sender number if no Messaging Service SID is used |
+| `TWILIO_TRIAL_TEMPLATE` | Trial only | Set to `sms_event_notifications`; delete after upgrading to enable detailed custom messages |
 
 Configure either `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_FROM_NUMBER`, not both. The workflow prefers the Messaging Service when both exist.
 

@@ -21,5 +21,6 @@ jobs:
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_MESSAGING_SERVICE_SID: ${{ secrets.TWILIO_MESSAGING_SERVICE_SID }}
           TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+          TWILIO_TRIAL_TEMPLATE: ${{ secrets.TWILIO_TRIAL_TEMPLATE }}
           SMS_TO_NUMBER: ${{ secrets.SMS_TO_NUMBER }}
         run: node scripts/monitor/send-test-sms.mjs
