@@ -1,4 +1,11 @@
 {
   "schemaVersion": 1,
-  "trackers": {}
+  "trackers": {
+    "ramayana-broadway-coimbatore": {
+      "lastKnownState": "closed",
+      "changedAt": "2026-11-08T16:17:54.130Z",
+      "notifiedAt": null,
+      "twilioMessageSid": null
+    }
+  }
 }
