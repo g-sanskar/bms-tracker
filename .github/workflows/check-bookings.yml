@@ -1,0 +1,63 @@
+name: Check BookMyShow bookings
+
+on:
+  schedule:
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+      timezone: "Asia/Kolkata"
+  workflow_dispatch:
+    inputs:
+      tracker_id:
+        description: "Optional tracker ID; blank checks all active trackers"
+        required: false
+        type: string
+      dry_run:
+        description: "Check without sending SMS or updating state"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: showping-booking-monitor
+  cancel-in-progress: false
+
+jobs:
+  check-bookings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check booking availability
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          TRACKER_ID: ${{ inputs.tracker_id || '' }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_MESSAGING_SERVICE_SID: ${{ secrets.TWILIO_MESSAGING_SERVICE_SID }}
+          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+          SMS_TO_NUMBER: ${{ secrets.SMS_TO_NUMBER }}
+        run: node scripts/monitor/check-bookings.mjs
+
+      - name: Persist notification state
+        if: ${{ success() }}
+        run: |
+          if git diff --quiet -- data/state.json; then
+            echo "No state change to persist."
+            exit 0
+          fi
+          git config user.name "showping-bot"
+          git config user.email "showping-bot@users.noreply.github.com"
+          git add data/state.json
+          git commit -m "chore: update booking state [skip ci]"
+          git push

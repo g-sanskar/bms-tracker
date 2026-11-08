@@ -1,0 +1,14 @@
+{
+  "trackers": [
+    {
+      "id": "example-movie-mumbai",
+      "active": true,
+      "movie": "Example Movie",
+      "aliases": [],
+      "theatre": "PVR: Example Theatre",
+      "city": "Mumbai",
+      "date": "2026-12-18",
+      "bookingUrl": "https://in.bookmyshow.com/cinemas/mumbai/example-theatre/buytickets/ABCD/20261218"
+    }
+  ]
+}
