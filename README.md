@@ -4,6 +4,8 @@ ShowPing is an unofficial BookMyShow booking monitor. A GitHub Action checks an 
 
 The web interface creates local tracker drafts and can copy the matching GitHub JSON. The repository is the production source of truth.
 
+See [docs/HLD.md](docs/HLD.md) for the complete architecture, deployed components, external services, data flows, security boundaries, and operational model.
+
 ## How monitoring works
 
 1. GitHub Actions runs `.github/workflows/check-bookings.yml` every five minutes.
