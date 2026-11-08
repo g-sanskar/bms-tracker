@@ -51,13 +51,19 @@ export function validateTracker(tracker) {
 export function evaluateBookingPage({ tracker, status, body, finalUrl }) {
   if (status === 403 || status === 429) return { state:"unknown", reason:`BookMyShow returned HTTP ${status}` };
   if (status < 200 || status >= 300) return { state:"unknown", reason:`BookMyShow returned HTTP ${status}` };
+  let parsedFinalUrl;
   try {
-    if (new URL(finalUrl).hostname !== BOOKMYSHOW_HOST) return { state:"unknown", reason:"request was redirected away from BookMyShow" };
+    parsedFinalUrl = new URL(finalUrl);
+    if (parsedFinalUrl.hostname !== BOOKMYSHOW_HOST) return { state:"unknown", reason:"request was redirected away from BookMyShow" };
   } catch {
     return { state:"unknown", reason:"response URL was invalid" };
   }
   const text = normalizeText(body);
   if (BLOCKED_MARKERS.some((marker) => text.includes(marker))) return { state:"unknown", reason:"BookMyShow returned a bot-check or access block" };
+  const expectedDate = tracker.date.replaceAll("-", "");
+  const finalDate = parsedFinalUrl.pathname.match(/\/(\d{8})\/?$/)?.[1];
+  if (!finalDate) return { state:"unknown", reason:"BookMyShow response did not identify a show date" };
+  if (finalDate !== expectedDate) return { state:"closed", reason:`target date is not open; BookMyShow redirected to ${finalDate}` };
   const candidates = [tracker.movie, ...(tracker.aliases ?? [])].map(normalizeText).filter((value) => value.length >= 2);
   const matched = candidates.find((title) => text.includes(title));
   if (matched) return { state:"open", reason:`movie title matched: ${matched}` };
@@ -68,19 +74,27 @@ export async function loadJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
-export async function checkTracker(tracker, fetchImpl = fetch) {
-  const response = await fetchImpl(tracker.bookingUrl, {
+export function extractReaderFinalUrl(body, fallbackUrl) {
+  return body.match(/^Final URL:\s*(https:\/\/in\.bookmyshow\.com\/\S+)\s*$/mi)?.[1]
+    ?? body.match(/^URL Source:\s*(https:\/\/in\.bookmyshow\.com\/\S+)\s*$/mi)?.[1]
+    ?? fallbackUrl;
+}
+
+export async function checkTracker(tracker, fetchImpl = fetch, mode = process.env.BOOKMYSHOW_FETCH_MODE || "reader") {
+  const requestUrl = mode === "direct" ? tracker.bookingUrl : `https://r.jina.ai/${tracker.bookingUrl}`;
+  const response = await fetchImpl(requestUrl, {
     redirect:"follow",
     signal:AbortSignal.timeout(15_000),
     headers:{
-      accept:"text/html,application/xhtml+xml",
+      accept:mode === "direct" ? "text/html,application/xhtml+xml" : "text/plain",
       "accept-language":"en-IN,en;q=0.9",
       "cache-control":"no-cache",
       "user-agent":"ShowPing/1.0 (+https://github.com; personal booking availability monitor)",
     },
   });
   const body = await response.text();
-  return evaluateBookingPage({ tracker, status:response.status, body, finalUrl:response.url || tracker.bookingUrl });
+  const finalUrl = mode === "direct" ? (response.url || tracker.bookingUrl) : extractReaderFinalUrl(body, tracker.bookingUrl);
+  return evaluateBookingPage({ tracker, status:response.status, body, finalUrl });
 }
 
 export function buildSmsBody(tracker) {

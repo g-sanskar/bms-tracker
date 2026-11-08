@@ -8,7 +8,7 @@ The web interface creates local tracker drafts and can copy the matching GitHub 
 
 1. GitHub Actions runs `.github/workflows/check-bookings.yml` every five minutes.
 2. `scripts/monitor/check-bookings.mjs` reads active records from `data/trackers.json`.
-3. Each exact BookMyShow `buytickets` URL is fetched. A successful page containing the configured movie title means booking is open.
+3. Each exact BookMyShow `buytickets` URL is fetched through a read-only page renderer because BookMyShow blocks plain server requests. Booking is open only when the final URL still targets the requested date and the page contains the configured movie title.
 4. Access blocks, rate limits, redirects, and request failures are treated as unknown and never send an alert.
 5. Twilio receives one SMS request on a closed/unknown → open transition.
 6. `data/state.json` is committed only when state changes, preventing repeat messages.
@@ -89,6 +89,7 @@ The website stores drafts in browser local storage. Use a tracker card’s **Cop
 ## Operational notes
 
 - Workflow concurrency prevents overlapping checks and state commits.
+- The default reader is `r.jina.ai`; it receives only the public BookMyShow URL and no ShowPing or Twilio credentials. Set `BOOKMYSHOW_FETCH_MODE=direct` if direct server access works in your environment.
 - Expired show dates are skipped automatically.
 - Failed SMS requests fail the workflow and do not mark the tracker as notified, so the next run can retry.
 - A later open → closed transition resets notification state, allowing a future reopening alert.
