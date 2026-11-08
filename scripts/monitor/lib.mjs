@@ -101,7 +101,7 @@ export function buildSmsBody(tracker) {
   return `ShowPing: Booking is open for ${tracker.movie} at ${tracker.theatre} on ${tracker.date}. Book now: ${tracker.bookingUrl}`;
 }
 
-export async function sendTwilioSms({ tracker, env = process.env, fetchImpl = fetch }) {
+export async function sendTwilioMessage({ body, env = process.env, fetchImpl = fetch }) {
   const accountSid = env.TWILIO_ACCOUNT_SID;
   const authToken = env.TWILIO_AUTH_TOKEN;
   const to = env.SMS_TO_NUMBER;
@@ -114,7 +114,7 @@ export async function sendTwilioSms({ tracker, env = process.env, fetchImpl = fe
     !messagingServiceSid && !from && "TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM_NUMBER",
   ].filter(Boolean);
   if (missing.length) throw new Error(`Missing SMS secrets: ${missing.join(", ")}`);
-  const form = new URLSearchParams({ To:to, Body:buildSmsBody(tracker) });
+  const form = new URLSearchParams({ To:to, Body:body });
   if (messagingServiceSid) form.set("MessagingServiceSid", messagingServiceSid);
   else form.set("From", from);
   const response = await fetchImpl(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`, {
@@ -129,4 +129,8 @@ export async function sendTwilioSms({ tracker, env = process.env, fetchImpl = fe
   const result = await response.json().catch(() => ({}));
   if (!response.ok || !result.sid) throw new Error(`Twilio rejected the SMS (${response.status}): ${result.message ?? "unknown error"}`);
   return { sid:result.sid, status:result.status };
+}
+
+export async function sendTwilioSms({ tracker, env = process.env, fetchImpl = fetch }) {
+  return sendTwilioMessage({ body:buildSmsBody(tracker), env, fetchImpl });
 }

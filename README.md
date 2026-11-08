@@ -65,6 +65,8 @@ npm run build
 
 After pushing to GitHub, open **Actions → Check BookMyShow bookings → Run workflow**. Keep `dry_run` enabled first. A dry run fetches and evaluates pages without sending SMS or updating `data/state.json`.
 
+Use **Actions → Test SMS delivery → Run workflow** to send one clearly labeled delivery test without changing booking state.
+
 For a local live check:
 
 ```bash
