@@ -1,6 +1,6 @@
 # ShowPing
 
-ShowPing is an unofficial BookMyShow booking monitor. A GitHub Action checks an exact theatre/date page every five minutes and sends one SMS through Twilio when the configured movie first appears.
+ShowPing is an unofficial BookMyShow booking monitor. A GitHub Action checks an exact theatre/date page every five minutes and sends one SMS through Twilio when the configured movie and format first appear together.
 
 The web interface creates local tracker drafts and can copy the matching GitHub JSON. The repository is the production source of truth.
 
@@ -8,7 +8,7 @@ The web interface creates local tracker drafts and can copy the matching GitHub 
 
 1. GitHub Actions runs `.github/workflows/check-bookings.yml` every five minutes.
 2. `scripts/monitor/check-bookings.mjs` reads active records from `data/trackers.json`.
-3. Each exact BookMyShow `buytickets` URL is fetched through a read-only page renderer because BookMyShow blocks plain server requests. Booking is open only when the final URL still targets the requested date and the page contains the configured movie title.
+3. Each exact BookMyShow `buytickets` URL is fetched through a read-only page renderer because BookMyShow blocks plain server requests. Booking is open only when the final URL still targets the requested date and that movie's listing contains the configured format.
 4. Access blocks, rate limits, redirects, and request failures are treated as unknown and never send an alert.
 5. Twilio receives one SMS request on a closed/unknown → open transition.
 6. `data/state.json` is committed only when state changes, preventing repeat messages.
@@ -30,13 +30,14 @@ Copy `data/trackers.example.json`, or add an item to `data/trackers.json`:
       "theatre": "PVR: Example Theatre",
       "city": "Mumbai",
       "date": "2026-12-18",
+      "format": "IMAX",
       "bookingUrl": "https://in.bookmyshow.com/cinemas/mumbai/example-theatre/buytickets/ABCD/20261218"
     }
   ]
 }
 ```
 
-Use the exact theatre/date page. The date in `YYYY-MM-DD` must match the final `YYYYMMDD` URL segment. Add an alternate displayed title to `aliases` only if BookMyShow uses a different spelling.
+Use the exact theatre/date page. The date in `YYYY-MM-DD` must match the final `YYYYMMDD` URL segment. Set `format` to `IMAX` to match all IMAX variants such as IMAX 2D, IMAX 3D, and IMAX Laser; use a more specific value when needed. Omit `format` to accept any format. Add an alternate displayed title to `aliases` only if BookMyShow uses a different spelling.
 
 ## 2. Add GitHub Actions secrets
 

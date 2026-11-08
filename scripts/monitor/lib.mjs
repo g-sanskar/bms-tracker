@@ -45,7 +45,33 @@ export function validateTracker(tracker) {
     errors.push("bookingUrl must be a valid URL");
   }
   if (tracker.aliases !== undefined && (!Array.isArray(tracker.aliases) || tracker.aliases.some((item) => typeof item !== "string" || !item.trim()))) errors.push("aliases must be an array of non-empty strings");
+  if (tracker.format !== undefined && (typeof tracker.format !== "string" || !tracker.format.trim())) errors.push("format must be a non-empty string when provided");
   return errors;
+}
+
+function extractMovieSections(body) {
+  const pattern = /^\s*\[([^\]]+)\]\(https:\/\/in\.bookmyshow\.com\/movies\/[^)\s]+\)/gim;
+  const matches = [...String(body ?? "").matchAll(pattern)];
+  return matches.map((match, index) => ({
+    title:normalizeText(match[1]),
+    content:normalizeText(String(body).slice(match.index, matches[index + 1]?.index ?? String(body).length)),
+  }));
+}
+
+function movieTitleMatches(title, candidates) {
+  return candidates.some((candidate) => title.includes(candidate));
+}
+
+function formatNearMovieTitle(text, candidates, format) {
+  return candidates.some((candidate) => {
+    let index = text.indexOf(candidate);
+    while (index !== -1) {
+      const nearby = text.slice(Math.max(0, index - 160), index + candidate.length + 360);
+      if (nearby.includes(format)) return true;
+      index = text.indexOf(candidate, index + candidate.length);
+    }
+    return false;
+  });
 }
 
 export function evaluateBookingPage({ tracker, status, body, finalUrl }) {
@@ -65,8 +91,23 @@ export function evaluateBookingPage({ tracker, status, body, finalUrl }) {
   if (!finalDate) return { state:"unknown", reason:"BookMyShow response did not identify a show date" };
   if (finalDate !== expectedDate) return { state:"closed", reason:`target date is not open; BookMyShow redirected to ${finalDate}` };
   const candidates = [tracker.movie, ...(tracker.aliases ?? [])].map(normalizeText).filter((value) => value.length >= 2);
+  const requiredFormat = normalizeText(tracker.format);
+  const movieSections = extractMovieSections(body);
+  if (movieSections.length) {
+    const matchingSections = movieSections.filter((section) => movieTitleMatches(section.title, candidates));
+    if (!matchingSections.length) return { state:"closed", reason:"movie is not listed on the theatre/date page" };
+    if (!requiredFormat) return { state:"open", reason:`movie title matched: ${matchingSections[0].title}` };
+    if (matchingSections.some((section) => section.content.includes(requiredFormat))) {
+      return { state:"open", reason:`movie and format matched: ${tracker.movie} (${tracker.format})` };
+    }
+    return { state:"closed", reason:`movie is listed, but ${tracker.format} is not available` };
+  }
   const matched = candidates.find((title) => text.includes(title));
-  if (matched) return { state:"open", reason:`movie title matched: ${matched}` };
+  if (matched && !requiredFormat) return { state:"open", reason:`movie title matched: ${matched}` };
+  if (matched && formatNearMovieTitle(text, candidates, requiredFormat)) {
+    return { state:"open", reason:`movie and format matched: ${tracker.movie} (${tracker.format})` };
+  }
+  if (matched) return { state:"closed", reason:`movie is listed, but ${tracker.format} is not available` };
   return { state:"closed", reason:"movie is not listed on the theatre/date page" };
 }
 
@@ -98,7 +139,8 @@ export async function checkTracker(tracker, fetchImpl = fetch, mode = process.en
 }
 
 export function buildSmsBody(tracker) {
-  return `ShowPing: Booking is open for ${tracker.movie} at ${tracker.theatre} on ${tracker.date}. Book now: ${tracker.bookingUrl}`;
+  const format = tracker.format ? ` (${tracker.format})` : "";
+  return `ShowPing: Booking is open for ${tracker.movie}${format} at ${tracker.theatre} on ${tracker.date}. Book now: ${tracker.bookingUrl}`;
 }
 
 export async function sendTwilioMessage({ body, env = process.env, fetchImpl = fetch }) {

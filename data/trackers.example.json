@@ -8,6 +8,7 @@
       "theatre": "PVR: Example Theatre",
       "city": "Mumbai",
       "date": "2026-12-18",
+      "format": "IMAX",
       "bookingUrl": "https://in.bookmyshow.com/cinemas/mumbai/example-theatre/buytickets/ABCD/20261218"
     }
   ]

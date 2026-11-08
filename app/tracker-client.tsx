@@ -11,6 +11,7 @@ type Channel = "email" | "sms";
 type TrackerStatus = "watching" | "paused" | "open";
 type Tracker = {
   id: string; movie: string; theatre: string; city: string; date: string;
+  format: string;
   channel: Channel; destination: string; status: TrackerStatus;
   lastChecked: string; color: string; bookingUrl?: string;
 };
@@ -23,11 +24,11 @@ const isoDate = (offset: number) => {
   return date.toISOString().slice(0, 10);
 };
 const seedTrackers: Tracker[] = [
-  { id:"seed-1", movie:"The Odyssey", theatre:"PVR INOX: Phoenix Marketcity", city:"Mumbai", date:isoDate(18), channel:"email", destination:"you@example.com", status:"watching", lastChecked:"Just now", color:"coral" },
-  { id:"seed-2", movie:"Project Hail Mary", theatre:"Cinepolis: Nexus Shantiniketan", city:"Bengaluru", date:isoDate(27), channel:"sms", destination:"+91 ••••• 4812", status:"paused", lastChecked:"12 min ago", color:"violet" },
+  { id:"ramayana-broadway-coimbatore", movie:"Ramayana", theatre:"Broadway Cinemas: Coimbatore", city:"Coimbatore", date:"2026-11-14", format:"IMAX", channel:"sms", destination:"+91 ••••• 1369", status:"watching", lastChecked:"GitHub checks every 5 min", color:"coral", bookingUrl:"https://in.bookmyshow.com/cinemas/coim/broadway-cinemas-coimbatore/buytickets/BWCB/20261114" },
 ];
-const movieSuggestions = ["The Odyssey", "Project Hail Mary", "Spider-Man: Brand New Day", "Ramayana: Part One", "Avengers: Secret Wars"];
-const theatreSuggestions = ["PVR INOX: Phoenix Marketcity", "Cinepolis: Nexus Shantiniketan", "INOX: R-City Mall", "PVR: Select City Walk", "AMB Cinemas: Gachibowli"];
+const movieSuggestions = ["Ramayana", "The Odyssey", "Project Hail Mary", "Spider-Man: Brand New Day", "Avengers: Secret Wars"];
+const theatreSuggestions = ["Broadway Cinemas: Coimbatore", "PVR INOX: Phoenix Marketcity", "Cinepolis: Nexus Shantiniketan", "INOX: R-City Mall", "PVR: Select City Walk"];
+const formatOptions = ["IMAX", "IMAX 3D", "IMAX 2D", "3D", "2D"];
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-IN", { weekday:"short", day:"numeric", month:"short" }).format(new Date(`${value}T12:00:00`));
@@ -53,7 +54,7 @@ function TrackerCard({ tracker, onToggle, onDelete, onCopy }: { tracker: Tracker
             </div>}
           </div>
         </div>
-        <div className="tracker-meta"><p><MapPin size={15} /> {tracker.theatre}, {tracker.city}</p><p><CalendarDays size={15} /> {formatDate(tracker.date)}</p></div>
+        <div className="tracker-meta"><p><MapPin size={15} /> {tracker.theatre}, {tracker.city}</p><p><Film size={15} /> {tracker.format || "Any format"}</p><p><CalendarDays size={15} /> {formatDate(tracker.date)}</p></div>
         <div className="tracker-footer">
           <span className="channel-chip">{tracker.channel === "email" ? <Mail size={14} /> : <MessageSquareText size={14} />}{tracker.destination}</span>
           <span className="last-check"><Clock3 size={14} /> Checked {tracker.lastChecked}</span>
@@ -69,13 +70,14 @@ function CreateTracker({ onClose, onCreate }: { onClose: () => void; onCreate: (
   const [theatre, setTheatre] = useState("");
   const [city, setCity] = useState("Mumbai");
   const [date, setDate] = useState(isoDate(1));
+  const [format, setFormat] = useState("IMAX");
   const [bookingUrl, setBookingUrl] = useState("");
   const [channel, setChannel] = useState<Channel>("sms");
   const [destination, setDestination] = useState("");
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (step === 1) { setStep(2); return; }
-    onCreate({ id:crypto.randomUUID(), movie:movie.trim(), theatre:theatre.trim(), city, date, bookingUrl:bookingUrl.trim(), channel, destination:destination.trim(), status:"watching", lastChecked:"Local draft", color:["coral","violet","blue"][Math.floor(Math.random()*3)] });
+    onCreate({ id:crypto.randomUUID(), movie:movie.trim(), theatre:theatre.trim(), city, date, format, bookingUrl:bookingUrl.trim(), channel, destination:destination.trim(), status:"watching", lastChecked:"Local draft", color:["coral","violet","blue"][Math.floor(Math.random()*3)] });
   };
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
@@ -89,10 +91,11 @@ function CreateTracker({ onClose, onCreate }: { onClose: () => void; onCreate: (
           {step === 1 ? <div className="form-stack">
             <label>Movie<span className="field-shell"><Search size={17} /><input list="movies" required value={movie} onChange={(event) => setMovie(event.target.value)} placeholder="Search for a movie" autoFocus /></span><datalist id="movies">{movieSuggestions.map((item) => <option key={item} value={item} />)}</datalist></label>
             <div className="form-grid">
-              <label>City<span className="select-shell"><MapPin size={17} /><select value={city} onChange={(event) => setCity(event.target.value)}><option>Mumbai</option><option>Delhi NCR</option><option>Bengaluru</option><option>Hyderabad</option><option>Chennai</option><option>Pune</option></select><ChevronDown size={16} /></span></label>
+              <label>City<span className="select-shell"><MapPin size={17} /><select value={city} onChange={(event) => setCity(event.target.value)}><option>Coimbatore</option><option>Mumbai</option><option>Delhi NCR</option><option>Bengaluru</option><option>Hyderabad</option><option>Chennai</option><option>Pune</option></select><ChevronDown size={16} /></span></label>
               <label>Date<span className="field-shell"><CalendarDays size={17} /><input required type="date" min={isoDate(0)} value={date} onChange={(event) => setDate(event.target.value)} /></span></label>
             </div>
             <label>Theatre<span className="field-shell"><MapPin size={17} /><input list="theatres" required value={theatre} onChange={(event) => setTheatre(event.target.value)} placeholder="Search for a theatre" /></span><datalist id="theatres">{theatreSuggestions.map((item) => <option key={item} value={item} />)}</datalist></label>
+            <label>Format<span className="select-shell"><Film size={17} /><select value={format} onChange={(event) => setFormat(event.target.value)}><option value="">Any format</option>{formatOptions.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={16} /></span></label>
             <label>BookMyShow theatre/date URL<span className="field-shell"><Film size={17} /><input required type="url" pattern="https://in\.bookmyshow\.com/.*/buytickets/.*" value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://in.bookmyshow.com/.../buytickets/.../20261218" /></span></label>
           </div> : <div className="form-stack">
             <div className="channel-toggle" role="group" aria-label="Notification channel">
@@ -100,7 +103,7 @@ function CreateTracker({ onClose, onCreate }: { onClose: () => void; onCreate: (
               <button type="button" className={channel === "sms" ? "selected" : ""} onClick={() => setChannel("sms")}><MessageSquareText size={19} /><span><b>SMS</b><small>Powered by Twilio</small></span>{channel === "sms" && <Check size={16} />}</button>
             </div>
             <label>Mobile number<span className="field-shell"><MessageSquareText size={17} /><input required type="tel" value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="+91 98765 43210" autoFocus /></span></label>
-            <div className="summary-box"><Sparkles size={17} /><span>This creates a local draft. Copy its GitHub JSON into <b>data/trackers.json</b>; the scheduled Action will then check every 5 minutes and send one SMS when booking opens.</span></div>
+            <div className="summary-box"><Sparkles size={17} /><span>This creates a local draft for {format || "any format"}. Copy its GitHub JSON into <b>data/trackers.json</b>; the scheduled Action will then check every 5 minutes and send one SMS when booking opens.</span></div>
           </div>}
           <div className="modal-actions">{step === 2 && <button className="button secondary" type="button" onClick={() => setStep(1)}>Back</button>}<button className="button primary" type="submit">{step === 1 ? "Continue" : "Start watching"}</button></div>
         </form>
@@ -119,13 +122,13 @@ export function TrackerApp() {
   useEffect(() => { try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) setTrackers(JSON.parse(saved)); } catch {} setReady(true); }, []);
   useEffect(() => { if (ready) localStorage.setItem(STORAGE_KEY, JSON.stringify(trackers)); }, [ready, trackers]);
   useEffect(() => { if (!toast) return; const id = window.setTimeout(() => setToast(""), 3500); return () => window.clearTimeout(id); }, [toast]);
-  const visibleTrackers = useMemo(() => trackers.filter((tracker) => (filter === "all" || tracker.status === filter) && `${tracker.movie} ${tracker.theatre} ${tracker.city}`.toLowerCase().includes(search.toLowerCase())), [filter, search, trackers]);
+  const visibleTrackers = useMemo(() => trackers.filter((tracker) => (filter === "all" || tracker.status === filter) && `${tracker.movie} ${tracker.theatre} ${tracker.city} ${tracker.format || ""}`.toLowerCase().includes(search.toLowerCase())), [filter, search, trackers]);
   const createTracker = (tracker: Tracker) => { setTrackers((current) => [tracker, ...current]); setCreating(false); setToast(`Draft saved. Copy ${tracker.movie} as GitHub JSON from its menu.`); };
   const toggleTracker = (id: string) => setTrackers((current) => current.map((tracker) => tracker.id === id ? { ...tracker, status:tracker.status === "watching" ? "paused" : "watching" } : tracker));
   const copyTrackerConfig = async (tracker: Tracker) => {
     const movieSlug = tracker.movie.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 44);
     const citySlug = tracker.city.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const config = { id:`${movieSlug || "movie"}-${citySlug}`, active:tracker.status === "watching", movie:tracker.movie, aliases:[], theatre:tracker.theatre, city:tracker.city, date:tracker.date, bookingUrl:tracker.bookingUrl || "PASTE_EXACT_BUYTICKETS_URL" };
+    const config = { id:`${movieSlug || "movie"}-${citySlug}`, active:tracker.status === "watching", movie:tracker.movie, aliases:[], theatre:tracker.theatre, city:tracker.city, date:tracker.date, ...(tracker.format ? { format:tracker.format } : {}), bookingUrl:tracker.bookingUrl || "PASTE_EXACT_BUYTICKETS_URL" };
     await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
     setToast("GitHub tracker JSON copied");
   };
@@ -143,7 +146,7 @@ export function TrackerApp() {
         <div className="top-actions"><span className="preview-pill"><CircleDot size={12} /> Actions ready</span><button className="avatar" type="button" aria-label="Account">SP</button></div>
       </header>
       <section className="hero" id="top">
-        <div><div className="eyebrow"><span /> YOUR BOOKING SENTINEL</div><h1>Don’t refresh.<br /><em>We’ll watch the seats.</em></h1><p>Pick a movie, theatre and date. ShowPing keeps an eye on booking status so you can get there before the good seats go.</p><div className="hero-actions"><button className="button primary large" type="button" onClick={() => setCreating(true)}><Plus size={18} /> Create a tracker</button><button className="text-button" type="button" onClick={testNotification}><Bell size={16} /> Test browser alert</button></div></div>
+        <div><div className="eyebrow"><span /> YOUR BOOKING SENTINEL</div><h1>Don’t refresh.<br /><em>We’ll watch the seats.</em></h1><p>Pick a movie, theatre, format and date. ShowPing keeps an eye on booking status so you can get there before the good seats go.</p><div className="hero-actions"><button className="button primary large" type="button" onClick={() => setCreating(true)}><Plus size={18} /> Create a tracker</button><button className="text-button" type="button" onClick={testNotification}><Bell size={16} /> Test browser alert</button></div></div>
         <div className="hero-visual" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="ticket-card back-ticket"><span>BOOKING</span><b>WATCH</b><small>05 MIN CHECKS</small></div><div className="ticket-card front-ticket"><span className="ticket-icon"><Bell size={25} /></span><div><small>THE MOMENT IT OPENS</small><b>You’re first to know.</b></div><span className="ticket-check"><Check size={17} /></span></div><span className="spark spark-one">✦</span><span className="spark spark-two">✦</span></div>
       </section>
       <section className="dashboard" id="trackers">
@@ -153,7 +156,7 @@ export function TrackerApp() {
       </section>
       <section className="how-section" id="how-it-works">
         <div className="section-heading compact"><div><span className="section-kicker">THE SHORT VERSION</span><h2>From wishlist to watchlist.</h2></div></div>
-        <div className="how-grid"><article><span>01</span><Film size={22} /><h3>Tell us the show</h3><p>Choose the exact movie, city, theatre and date you care about.</p></article><article><span>02</span><Clock3 size={22} /><h3>We keep watch</h3><p>A production checker polls availability and stops after the date passes.</p></article><article><span>03</span><Bell size={22} /><h3>Get the ping</h3><p>Connect an email or SMS provider and get one alert the moment booking opens.</p></article></div>
+        <div className="how-grid"><article><span>01</span><Film size={22} /><h3>Tell us the show</h3><p>Choose the exact movie, city, theatre, format and date you care about.</p></article><article><span>02</span><Clock3 size={22} /><h3>We keep watch</h3><p>A production checker polls availability and stops after the date passes.</p></article><article><span>03</span><Bell size={22} /><h3>Get the ping</h3><p>Connect an email or SMS provider and get one alert the moment booking opens.</p></article></div>
         <div className="integration-note"><span className="note-icon"><Sparkles size={18} /></span><div><b>GitHub monitor ready</b><p>The repository now contains the scheduled checker, transition-only SMS delivery, deduplication state, dry-run support and tests. Add the copied JSON to data/trackers.json and configure the Twilio repository secrets to activate it.</p></div></div>
       </section>
       <footer><a className="brand muted" href="#top"><span className="brand-mark"><Bell size={16} fill="currentColor" /></span><span>Show<span>Ping</span></span></a><p>Built for movie nights, not endless refreshes.</p><span>Unofficial companion · Not affiliated with BookMyShow</span></footer>
