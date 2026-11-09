@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildSmsBody, evaluateBookingPage, extractReaderFinalUrl, normalizeText, validateTracker } from "../scripts/monitor/lib.mjs";
+import { buildSmsBody, chooseRequestJitterSeconds, evaluateBookingPage, extractReaderFinalUrl, normalizeText, validateTracker } from "../scripts/monitor/lib.mjs";
 
 const tracker = {
   id:"odyssey-mumbai", active:true, movie:"The Odyssey", aliases:["Odyssey"],
@@ -10,6 +10,18 @@ const tracker = {
 
 test("normalizes markup and punctuation", () => {
   assert.equal(normalizeText("<b>The&nbsp;Odyssey</b> — IMAX"), "the odyssey imax");
+});
+
+test("selects request jitter inside the configured inclusive range", () => {
+  assert.equal(chooseRequestJitterSeconds("5", "45", () => 0), 5);
+  assert.equal(chooseRequestJitterSeconds("5", "45", () => 0.5), 25);
+  assert.equal(chooseRequestJitterSeconds("5", "45", () => 0.999999), 45);
+  assert.equal(chooseRequestJitterSeconds(undefined, undefined, () => 0.5), 0);
+});
+
+test("rejects invalid request jitter settings", () => {
+  assert.throws(() => chooseRequestJitterSeconds("45", "5"), /request jitter/);
+  assert.throws(() => chooseRequestJitterSeconds("0", "301"), /request jitter/);
 });
 
 test("detects an open booking when the movie and format match", () => {

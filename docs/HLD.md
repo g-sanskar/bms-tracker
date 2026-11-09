@@ -3,7 +3,7 @@
 | Attribute | Value |
 | --- | --- |
 | Status | Implemented and deployed |
-| Last updated | 2026-11-08 |
+| Last updated | 2026-11-09 |
 | Source repository | `g-sanskar/bms-tracker` |
 | Production UI | <https://showping-booking-tracker.pliantmap3.chatgpt.site> |
 | Primary region/time zone | India / `Asia/Kolkata` |
@@ -16,7 +16,7 @@ The design deliberately uses GitHub as both the control plane and the small pers
 
 ### Goals
 
-- Check exact BookMyShow theatre/date pages on a five-minute schedule.
+- Check exact BookMyShow theatre/date pages on a varied cadence of roughly four to eight minutes.
 - Match the configured movie and format together, such as Ramayana in IMAX.
 - Send at most one SMS for each closed/unknown to open transition.
 - Avoid false alerts when BookMyShow blocks access, rate-limits, or redirects to another date.
@@ -26,7 +26,7 @@ The design deliberately uses GitHub as both the control plane and the small pers
 ### Non-goals
 
 - Reserving seats or completing a booking.
-- Real-time or guaranteed five-minute delivery.
+- Real-time or guaranteed polling intervals.
 - A multi-user account system.
 - Editing the production configuration directly from the hosted UI.
 - Email delivery in the current release.
@@ -57,7 +57,7 @@ The hosted UI and scheduled monitor are separate deployment paths. The UI helps 
 | Tracker UI | OpenAI Sites, server-backed Vinext/Cloudflare Worker | Creates browser-local tracker drafts and copies production-compatible JSON | Browser `localStorage` only |
 | Source and configuration | GitHub repository, `main` branch | Canonical application source, tracker configuration, workflows, and notification state | Git history and repository files |
 | Booking monitor | Node.js 22 in GitHub Actions | Validates trackers, fetches pages, evaluates availability, sends alerts, and updates state | None outside the checked-out repository |
-| Scheduler | GitHub Actions cron | Starts the monitor every five minutes | Workflow run history |
+| Scheduler | GitHub Actions cron | Starts the monitor on an irregular four-to-eight-minute cadence | Workflow run history |
 | Page renderer | `r.jina.ai` | Retrieves a readable representation of the public BookMyShow page and exposes the final redirected URL | External transient cache, controlled by the provider |
 | Booking source | `in.bookmyshow.com` | Authoritative public theatre/date listing | External system |
 | SMS provider | Twilio REST API | Accepts and delivers SMS notifications | Twilio message records |
@@ -90,7 +90,7 @@ No D1 database or R2 object storage is configured; both bindings are explicitly 
 | Workflow | Trigger | Purpose | Repository permission |
 | --- | --- | --- | --- |
 | `Verify project` | Push to `main` and pull requests | Installs dependencies, runs unit tests, and builds the UI | Read |
-| `Check BookMyShow bookings` | Five-minute schedule or manual dispatch | Checks active trackers and sends transition alerts | Write, only to persist `data/state.json` |
+| `Check BookMyShow bookings` | Irregular schedule or manual dispatch | Checks active trackers and sends transition alerts | Write, only to persist `data/state.json` |
 | `Test SMS delivery` | Manual dispatch | Sends a labeled delivery test independent of booking state | Read |
 
 The monitor workflow uses a concurrency group with cancellation disabled. This prevents overlapping monitor runs from racing to send the same alert or update the state file.
@@ -100,6 +100,8 @@ The monitor workflow uses a concurrency group with cancellation disabled. This p
 GitHub Actions requests `https://r.jina.ai/<bookmyshow-url>`. Only the public BookMyShow URL is sent to this renderer; Twilio credentials, the destination number, and repository secrets are never included.
 
 Direct BookMyShow server requests are supported as an alternate mode, but the deployed workflow uses reader mode because BookMyShow commonly blocks plain server-side requests.
+
+Scheduled runs use minute gaps of 5, 6, 8, 4, 7, 5, 6, 4, 5, 5, and 5 before the sequence repeats each hour. The monitor then waits a random 5–45 seconds before its first external request. This avoids a perfectly fixed polling signature and reduces the average request rate. Manual dispatches use zero jitter so dry-runs remain fast.
 
 ### 4.5 Notification channels
 
@@ -243,7 +245,7 @@ BookMyShow content and rendered text are untrusted external input. They are norm
 | Concurrent scheduled run | Serialized by the workflow concurrency group |
 | No state change | No repository commit is created |
 
-GitHub's schedule is best-effort. A five-minute cron interval does not guarantee exact execution time, especially during GitHub Actions congestion.
+GitHub's schedule is best-effort. GitHub may delay or drop cron events during Actions congestion, as documented under the [`schedule` event](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule), so the configured four-to-eight-minute cadence does not guarantee exact execution time.
 
 ## 9. Observability and operations
 

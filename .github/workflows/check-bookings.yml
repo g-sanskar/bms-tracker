@@ -2,7 +2,8 @@ name: Check BookMyShow bookings
 
 on:
   schedule:
-    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+    # Irregular 4-8 minute gaps, plus a small runtime delay before the request.
+    - cron: "2,7,13,21,25,32,37,43,47,52,57 * * * *"
       timezone: "Asia/Kolkata"
   workflow_dispatch:
     inputs:
@@ -43,6 +44,8 @@ jobs:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
           TRACKER_ID: ${{ inputs.tracker_id || '' }}
           BOOKMYSHOW_FETCH_MODE: reader
+          REQUEST_JITTER_MIN_SECONDS: ${{ github.event_name == 'schedule' && '5' || '0' }}
+          REQUEST_JITTER_MAX_SECONDS: ${{ github.event_name == 'schedule' && '45' || '0' }}
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_MESSAGING_SERVICE_SID: ${{ secrets.TWILIO_MESSAGING_SERVICE_SID }}

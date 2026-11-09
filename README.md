@@ -1,6 +1,6 @@
 # ShowPing
 
-ShowPing is an unofficial BookMyShow booking monitor. A GitHub Action checks an exact theatre/date page every five minutes and sends one SMS through Twilio when the configured movie and format first appear together.
+ShowPing is an unofficial BookMyShow booking monitor. A GitHub Action checks an exact theatre/date page on a varied cadence of roughly four to eight minutes and sends one SMS through Twilio when the configured movie and format first appear together.
 
 The web interface creates local tracker drafts and can copy the matching GitHub JSON. The repository is the production source of truth.
 
@@ -8,14 +8,14 @@ See [docs/HLD.md](docs/HLD.md) for the complete architecture, deployed component
 
 ## How monitoring works
 
-1. GitHub Actions runs `.github/workflows/check-bookings.yml` every five minutes.
+1. GitHub Actions runs `.github/workflows/check-bookings.yml` on an irregular four-to-eight-minute cron pattern. Scheduled runs add a random 5–45 second delay before the external request, while manual runs start immediately.
 2. `scripts/monitor/check-bookings.mjs` reads active records from `data/trackers.json`.
 3. Each exact BookMyShow `buytickets` URL is fetched through a read-only page renderer because BookMyShow blocks plain server requests. Booking is open only when the final URL still targets the requested date and that movie's listing contains the configured format.
 4. Access blocks, rate limits, redirects, and request failures are treated as unknown and never send an alert.
 5. Twilio receives one SMS request on a closed/unknown → open transition.
 6. `data/state.json` is committed only when state changes, preventing repeat messages.
 
-Scheduled GitHub Actions can be delayed by GitHub. Five minutes is the shortest supported schedule interval, not a real-time delivery guarantee.
+Scheduled GitHub Actions are best-effort and can be delayed or dropped by GitHub, as described in the [GitHub schedule documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule). The varied cadence reduces fixed-pattern polling but is not a real-time delivery guarantee.
 
 ## 1. Configure a tracker
 
@@ -95,6 +95,7 @@ The website stores drafts in browser local storage. Use a tracker card’s **Cop
 ## Operational notes
 
 - Workflow concurrency prevents overlapping checks and state commits.
+- The production cron uses repeating gaps of 5, 6, 8, 4, 7, 5, 6, 4, 5, 5, and 5 minutes, with an additional random 5–45 second request delay. Manual workflow runs do not wait.
 - The default reader is `r.jina.ai`; it receives only the public BookMyShow URL and no ShowPing or Twilio credentials. Set `BOOKMYSHOW_FETCH_MODE=direct` if direct server access works in your environment.
 - Expired show dates are skipped automatically.
 - Failed SMS requests fail the workflow and do not mark the tracker as notified, so the next run can retry.

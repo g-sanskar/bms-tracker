@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { checkTracker, loadJson, sendTwilioSms, validateTracker } from "./lib.mjs";
+import { setTimeout as delay } from "node:timers/promises";
+import { checkTracker, chooseRequestJitterSeconds, loadJson, sendTwilioSms, validateTracker } from "./lib.mjs";
 
 const trackerPath = resolve(process.env.TRACKERS_PATH || "data/trackers.json");
 const statePath = resolve(process.env.STATE_PATH || "data/state.json");
@@ -25,6 +26,11 @@ state.trackers ??= {};
 let changed = false;
 let failures = 0;
 let checked = 0;
+let jitterApplied = false;
+const jitterSeconds = chooseRequestJitterSeconds(
+  process.env.REQUEST_JITTER_MIN_SECONDS,
+  process.env.REQUEST_JITTER_MAX_SECONDS,
+);
 
 for (const tracker of trackers) {
   const errors = validateTracker(tracker);
@@ -37,6 +43,13 @@ for (const tracker of trackers) {
   if (tracker.date < todayInIndia) {
     console.log(`[${tracker.id}] skipped: show date ${tracker.date} has passed`);
     continue;
+  }
+  if (!jitterApplied) {
+    jitterApplied = true;
+    if (jitterSeconds > 0) {
+      console.log(`Applying ${jitterSeconds}s request jitter before checking BookMyShow`);
+      await delay(jitterSeconds * 1_000);
+    }
   }
   checked += 1;
   try {

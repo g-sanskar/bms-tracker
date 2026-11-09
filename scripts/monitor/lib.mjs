@@ -26,6 +26,17 @@ export function normalizeText(value) {
     .toLowerCase();
 }
 
+export function chooseRequestJitterSeconds(minValue = 0, maxValue = 0, random = Math.random) {
+  const minSeconds = Number(minValue || 0);
+  const maxSeconds = Number(maxValue || 0);
+  if (!Number.isInteger(minSeconds) || !Number.isInteger(maxSeconds) || minSeconds < 0 || maxSeconds < minSeconds || maxSeconds > 300) {
+    throw new Error("request jitter must use whole seconds with 0 <= min <= max <= 300");
+  }
+  const sample = random();
+  if (!Number.isFinite(sample) || sample < 0 || sample >= 1) throw new Error("request jitter random source must return a value from 0 up to, but not including, 1");
+  return minSeconds + Math.floor(sample * (maxSeconds - minSeconds + 1));
+}
+
 export function validateTracker(tracker) {
   const errors = [];
   if (!tracker || typeof tracker !== "object") return ["tracker must be an object"];
